@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>拼豆图纸工坊 | Perler Bead Pattern Studio</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app is-simple">
+      <header class="app-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <h1 data-i18n="appTitle">拼豆图纸工坊</h1>
+            <p data-i18n="appSubtitle">本地生成可实际摆放的拼豆图纸</p>
+          </div>
+        </div>
+        <div class="header-actions" aria-label="Export and language">
+          <div class="view-switch" role="group" aria-label="View mode">
+            <button class="view-switch-button is-active" id="simpleModeButton" type="button" data-view-mode="simple" data-i18n="simpleVersion">简易版</button>
+            <button class="view-switch-button" id="detailModeButton" type="button" data-view-mode="detail" data-i18n="detailVersion">详细版</button>
+          </div>
+          <label class="select-shell compact">
+            <span data-i18n="language">语言</span>
+            <select id="languageSelect">
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <button class="icon-button" id="exportPngButton" type="button" title="PNG" aria-label="PNG">PNG</button>
+          <button class="icon-button" id="exportCsvButton" type="button" title="CSV" aria-label="CSV">CSV</button>
+          <button class="primary-button" id="printPdfButton" type="button" data-i18n="pdfPrint">PDF / 1:1</button>
+        </div>
+      </header>
+
+      <section class="simple-hero simple-only" aria-label="Generator intro">
+        <p>Perler Beads</p>
+        <h2 data-i18n="simpleHeroTitle">拼豆图纸生成器</h2>
+        <span data-i18n="simpleHeroSubtitle">上传图片，快速生成可实际摆放的拼豆图案</span>
+      </section>
+
+      <main class="app-shell">
+        <section class="workspace" aria-label="Pattern workspace">
+          <div class="top-row">
+            <label class="upload-zone" id="dropZone">
+              <input id="imageInput" type="file" accept="image/*" />
+              <span class="upload-icon" aria-hidden="true">+</span>
+              <span class="upload-main" data-i18n="uploadTitle">上传图片</span>
+              <span class="upload-meta" id="fileMeta" data-i18n="uploadMeta">JPG / PNG / WEBP，最大 20MB</span>
+            </label>
+
+            <div class="stats-bar" aria-live="polite">
+              <div>
+                <span data-i18n="beadTotal">总珠数</span>
+                <strong id="totalBeads">0</strong>
+              </div>
+              <div>
+                <span data-i18n="colorTotal">颜色数</span>
+                <strong id="colorCount">0</strong>
+              </div>
+              <div>
+                <span data-i18n="boardTotal">拼板</span>
+                <strong id="boardCount">0</strong>
+              </div>
+              <div>
+                <span data-i18n="physicalSize">成品尺寸</span>
+                <strong id="physicalSize">0 x 0 mm</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-layout">
+            <article class="preview-panel original-panel">
+              <div class="panel-heading">
+                <h2 data-i18n="originalImage">原图</h2>
+                <div class="panel-actions">
+                  <button class="mini-button" id="cropResetButton" type="button" data-i18n="resetCrop">重置框选</button>
+                  <span id="originalInfo">-</span>
+                </div>
+              </div>
+              <div class="original-frame">
+                <img id="originalPreview" alt="" />
+                <div class="crop-box" id="cropBox" aria-label="Crop selection">
+                  <span class="crop-handle nw" data-handle="nw"></span>
+                  <span class="crop-handle ne" data-handle="ne"></span>
+                  <span class="crop-handle sw" data-handle="sw"></span>
+                  <span class="crop-handle se" data-handle="se"></span>
+                </div>
+                <div class="empty-state" id="originalEmpty" data-i18n="emptyOriginal">等待图片</div>
+              </div>
+              <div class="hover-readout crop-readout" id="cropReadout" data-i18n="cropHint">拖动框选区域，按拼豆图纸比例生成</div>
+            </article>
+
+            <article class="preview-panel pattern-panel">
+              <div class="panel-heading editor-heading">
+                <h2 data-i18n="patternPreview">拼豆图纸</h2>
+                <div class="canvas-tools" role="toolbar" aria-label="Pattern tools">
+                  <button class="tool-button is-active" data-tool="brush" type="button" title="Brush" aria-label="Brush">●</button>
+                  <button class="tool-button" data-tool="eraser" type="button" title="Eraser" aria-label="Eraser">⌫</button>
+                  <button class="tool-button" data-tool="eyedropper" type="button" title="Eyedropper" aria-label="Eyedropper">◎</button>
+                  <button class="tool-button" data-tool="fill" type="button" title="Fill" aria-label="Fill">◼</button>
+                  <button class="tool-button" id="undoButton" type="button" title="Undo" aria-label="Undo">↶</button>
+                  <button class="tool-button" id="redoButton" type="button" title="Redo" aria-label="Redo">↷</button>
+                  <button class="tool-button" id="restoreButton" type="button" title="Restore" aria-label="Restore">↺</button>
+                  <button class="tool-button" id="zoomOutButton" type="button" title="Zoom out" aria-label="Zoom out">−</button>
+                  <button class="tool-button" id="zoomInButton" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+                </div>
+              </div>
+              <div class="canvas-wrap" id="canvasWrap">
+                <canvas id="patternCanvas" width="580" height="580"></canvas>
+                <div class="empty-state pattern-empty" id="patternEmpty" data-i18n="emptyPattern">生成后显示图纸</div>
+              </div>
+              <div class="hover-readout" id="hoverReadout" data-i18n="hoverEmpty">悬停查看珠位</div>
+            </article>
+          </div>
+
+          <section class="edit-row" aria-label="Palette and replacement">
+            <article class="editor-panel">
+              <div class="panel-heading">
+                <h2 data-i18n="activePalette">当前色板</h2>
+                <span id="selectedColorLabel">-</span>
+              </div>
+              <div class="palette-grid" id="paletteGrid"></div>
+            </article>
+
+            <article class="editor-panel replace-panel">
+              <div class="panel-heading">
+                <h2 data-i18n="replaceColor">颜色替换</h2>
+              </div>
+              <div class="replace-controls">
+                <label>
+                  <span data-i18n="fromColor">原颜色</span>
+                  <select id="replaceFromSelect"></select>
+                </label>
+                <label>
+                  <span data-i18n="toColor">替换为</span>
+                  <select id="replaceToSelect"></select>
+                </label>
+                <button class="secondary-button" id="replaceButton" type="button" data-i18n="replace">替换</button>
+              </div>
+            </article>
+          </section>
+
+          <section class="materials-panel">
+            <div class="panel-heading">
+              <h2 data-i18n="materials">材料清单</h2>
+              <span id="shortageSummary">-</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-i18n="color">颜色</th>
+                    <th data-i18n="brand">品牌</th>
+                    <th data-i18n="code">色号</th>
+                    <th data-i18n="needed">需要</th>
+                    <th data-i18n="owned">库存</th>
+                    <th data-i18n="missing">缺口</th>
+                    <th data-i18n="packs">1000颗包</th>
+                    <th data-i18n="alternatives">替代色</th>
+                  </tr>
+                </thead>
+                <tbody id="materialsBody">
+                  <tr>
+                    <td colspan="8" class="table-empty" data-i18n="emptyMaterials">生成图纸后显示材料清单</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <aside class="settings-panel" aria-label="Pattern settings">
+          <section class="settings-section quick-section">
+            <h2 data-i18n="settings">生成设置</h2>
+            <div class="control-grid">
+              <label>
+                <span data-i18n="beadSize">拼豆规格</span>
+                <select id="beadSizeSelect">
+                  <option value="5">5mm Standard</option>
+                  <option value="2.6">2.6mm Mini</option>
+                </select>
+              </label>
+
+              <label>
+                <span data-i18n="paletteBrand">品牌色板</span>
+                <select id="brandSelect">
+                  <option value="china" data-i18n-option="domesticPalette">国产常用</option>
+                  <option value="perler">Perler</option>
+                  <option value="hama">Hama</option>
+                  <option value="artkal">Artkal</option>
+                </select>
+              </label>
+
+              <label>
+                <span data-i18n="mode">生成模式</span>
+                <select id="modeSelect">
+                  <option value="icon" data-i18n-option="modeIcon">简洁图标</option>
+                  <option value="portrait" data-i18n-option="modePortrait">肖像模式</option>
+                  <option value="realistic" data-i18n-option="modeRealistic">真实还原</option>
+                </select>
+              </label>
+
+              <label class="hidden-control">
+                <span data-i18n="cropMode">裁剪方式</span>
+                <select id="cropModeSelect">
+                  <option value="cover" data-i18n-option="cropCover">裁剪填满</option>
+                  <option value="contain" data-i18n-option="cropContain">完整填充</option>
+                  <option value="stretch" data-i18n-option="cropStretch">拉伸到尺寸</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section quick-section">
+            <h2 data-i18n="sizeTitle">尺寸</h2>
+            <div class="preset-grid">
+              <button class="preset-button" data-size="29x29" type="button">29×29</button>
+              <button class="preset-button is-active" data-size="58x58" type="button">58×58</button>
+              <button class="preset-button" data-size="58x87" type="button">58×87</button>
+              <button class="preset-button" data-size="87x58" type="button">87×58</button>
+              <button class="preset-button" data-size="87x87" type="button">87×87</button>
+              <button class="preset-button" data-size="116x116" type="button">116×116</button>
+              <button class="preset-button" data-size="116x174" type="button">116×174</button>
+              <button class="preset-button" data-size="174x116" type="button">174×116</button>
+              <button class="preset-button" data-size="145x145" type="button">145×145</button>
+              <button class="preset-button" data-size="200x200" type="button">200×200</button>
+              <button class="preset-button" data-size="300x300" type="button">300×300</button>
+              <button class="preset-button" data-size="500x500" type="button">500×500</button>
+            </div>
+            <div class="size-grid">
+              <label>
+                <span data-i18n="widthBeads">宽度 / 颗</span>
+                <input id="widthInput" type="number" min="10" max="500" value="58" />
+              </label>
+              <label>
+                <span data-i18n="heightBeads">高度 / 颗</span>
+                <input id="heightInput" type="number" min="10" max="500" value="58" />
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section quick-section">
+            <h2 data-i18n="colorRules">颜色规则</h2>
+            <label>
+              <span data-i18n="maxColors">最大颜色数</span>
+              <select id="maxColorsSelect">
+                <option value="8">8</option>
+                <option value="16">16</option>
+                <option value="24">24</option>
+                <option value="32">32</option>
+                <option value="64">64</option>
+                <option value="96" selected>96</option>
+              </select>
+            </label>
+            <label>
+              <span data-i18n="detailLevel">细节增强</span>
+              <select id="detailLevelSelect">
+                <option value="standard" data-i18n-option="detailStandard">标准</option>
+                <option value="high" selected data-i18n-option="detailHigh">高清</option>
+                <option value="max" data-i18n-option="detailMax">尽量保留细节</option>
+              </select>
+            </label>
+            <div class="switch-grid detail-control">
+              <label class="switch-row">
+                <input id="ditherToggle" type="checkbox" />
+                <span data-i18n="dither">抖动渐变</span>
+              </label>
+              <label class="switch-row">
+                <input id="excludeSpecialToggle" type="checkbox" checked />
+                <span data-i18n="excludeSpecial">排除特殊材质色</span>
+              </label>
+            </div>
+            <label class="detail-control">
+              <span data-i18n="transparentMode">透明区域</span>
+              <select id="transparentSelect">
+                <option value="empty" data-i18n-option="transparentEmpty">空珠位</option>
+                <option value="white" data-i18n-option="transparentWhite">填白色</option>
+                <option value="black" data-i18n-option="transparentBlack">填黑色</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="settings-section detail-only">
+            <h2 data-i18n="previewTitle">预览</h2>
+            <label>
+              <span data-i18n="previewStyle">显示样式</span>
+              <select id="previewStyleSelect">
+                <option value="square" data-i18n-option="previewSquare">方格</option>
+                <option value="bead" data-i18n-option="previewBead">圆珠</option>
+                <option value="hollow" data-i18n-option="previewHollow">中空圆珠</option>
+              </select>
+            </label>
+            <div class="switch-grid">
+              <label class="switch-row">
+                <input id="gridToggle" type="checkbox" checked />
+                <span data-i18n="showGrid">显示网格</span>
+              </label>
+              <label class="switch-row">
+                <input id="fitToggle" type="checkbox" checked />
+                <span data-i18n="fitCanvas">适配屏幕</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section quick-section actions-section">
+            <h2 data-i18n="actions">操作</h2>
+            <button class="primary-button full-width" id="generateButton" type="button" data-i18n="generate">生成图纸</button>
+            <button class="secondary-button full-width" id="resetInventoryButton" type="button" data-i18n="resetInventory">清空库存输入</button>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script defer src="./app.js?v=20260509-6"></script>
+  </body>
+</html>
