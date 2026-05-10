@@ -63,6 +63,8 @@ button:disabled {
 .app.is-simple .edit-row,
 .app.is-simple .materials-panel,
 .app.is-simple .canvas-tools,
+.app.is-simple .simple-advanced,
+.app.is-simple .simple-secondary-preset,
 .app.is-detail .simple-only {
   display: none;
 }
@@ -259,25 +261,34 @@ button:disabled {
 
 .app.is-simple .preview-layout {
   order: 3;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-width: 1180px;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  max-width: 980px;
   width: 100%;
   margin: 0 auto;
 }
 
+.app.is-simple .original-panel,
+.app.is-simple .pattern-panel {
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  min-height: calc(100svh - 106px);
+  scroll-margin-top: 88px;
+}
+
 .app.is-simple .original-frame,
 .app.is-simple .canvas-wrap {
-  height: min(58vh, 560px);
-  min-height: 360px;
+  height: auto;
+  min-height: 0;
 }
 
 .app.is-simple .settings-panel {
   order: 2;
   position: static;
   display: grid;
-  grid-template-columns: minmax(260px, 1.15fr) minmax(360px, 1.75fr) minmax(190px, 0.75fr) minmax(160px, 0.55fr);
+  grid-template-columns: minmax(320px, 1fr) minmax(180px, 220px);
   gap: 12px;
-  max-width: 1180px;
+  max-width: 980px;
   width: 100%;
   max-height: none;
   margin: 0 auto;
@@ -292,6 +303,15 @@ button:disabled {
 
 .app.is-simple .settings-section h2 {
   margin-bottom: 10px;
+}
+
+.app.is-simple .preset-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-height: none;
+}
+
+.app.is-simple .size-grid {
+  display: none;
 }
 
 .app.is-simple .control-grid {
@@ -656,6 +676,13 @@ button:disabled {
     #f8faf8;
   background-size: 24px 24px;
   touch-action: none;
+  overscroll-behavior: contain;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.canvas-wrap.is-touching {
+  cursor: grabbing;
 }
 
 #patternCanvas {
@@ -664,6 +691,7 @@ button:disabled {
   image-rendering: pixelated;
   border: 1px solid var(--line-strong);
   background: #fff;
+  touch-action: none;
 }
 
 .canvas-wrap:not(.has-pattern) #patternCanvas {
@@ -1050,8 +1078,8 @@ th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .original-frame,
-  .canvas-wrap {
+  .app:not(.is-simple) .original-frame,
+  .app:not(.is-simple) .canvas-wrap {
     height: 52svh;
   }
 
@@ -1114,6 +1142,20 @@ th {
     overscroll-behavior: contain;
   }
 
+  .original-panel,
+  .pattern-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: calc(100svh - 96px);
+    scroll-margin-top: 82px;
+  }
+
+  .original-frame,
+  .canvas-wrap {
+    height: auto;
+    min-height: 0;
+  }
+
   #patternCanvas {
     margin: 12px auto;
   }
@@ -1154,6 +1196,10 @@ th {
 
   .app.is-simple .settings-panel {
     grid-template-columns: 1fr;
+  }
+
+  .app.is-simple .preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .app.is-simple .upload-zone {
@@ -1207,12 +1253,12 @@ th {
     padding: 12px;
   }
 
-  .original-frame {
+  .app:not(.is-simple) .original-frame {
     height: 42svh;
     min-height: 240px;
   }
 
-  .canvas-wrap {
+  .app:not(.is-simple) .canvas-wrap {
     height: 64svh;
     min-height: 340px;
   }

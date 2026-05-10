@@ -2,6 +2,8 @@ const BOARD_SIZE = 29;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const HISTORY_LIMIT = 30;
 const MAX_PATTERN_SIZE = 500;
+const MIN_PATTERN_ZOOM = 0.5;
+const MAX_PATTERN_ZOOM = 6;
 
 const I18N = {
   zh: {
@@ -486,6 +488,9 @@ const state = {
   isPainting: false,
   editSnapshotTaken: false,
   lastPaintKey: "",
+  activePatternPointers: new Map(),
+  patternPan: null,
+  patternPinch: null,
 };
 
 init();
@@ -614,13 +619,11 @@ function wireEvents() {
   });
 
   els.zoomInButton.addEventListener("click", () => {
-    state.zoom = clampNumber(state.zoom + 0.25, 0.5, 5);
-    renderPattern();
+    changePatternZoom(0.25);
   });
 
   els.zoomOutButton.addEventListener("click", () => {
-    state.zoom = clampNumber(state.zoom - 0.25, 0.5, 5);
-    renderPattern();
+    changePatternZoom(-0.25);
   });
 
   els.undoButton.addEventListener("click", undo);
@@ -641,6 +644,10 @@ function wireEvents() {
   els.patternCanvas.addEventListener("pointerleave", () => {
     if (!state.isPainting) els.hoverReadout.textContent = t("hoverEmpty");
   });
+  els.canvasWrap.addEventListener("pointerdown", handleCanvasTouchDown);
+  els.canvasWrap.addEventListener("pointermove", handleCanvasTouchMove);
+  els.canvasWrap.addEventListener("pointerup", handleCanvasTouchEnd);
+  els.canvasWrap.addEventListener("pointercancel", handleCanvasTouchEnd);
 
   els.cropBox.addEventListener("pointerdown", handleCropPointerDown);
   window.addEventListener("pointermove", handleCropPointerMove);
@@ -682,12 +689,10 @@ function wireEvents() {
       redo();
     }
     if (key === "+" || key === "=") {
-      state.zoom = clampNumber(state.zoom + 0.25, 0.5, 5);
-      renderPattern();
+      changePatternZoom(0.25);
     }
     if (key === "-") {
-      state.zoom = clampNumber(state.zoom - 0.25, 0.5, 5);
-      renderPattern();
+      changePatternZoom(-0.25);
     }
   });
 }
@@ -1528,8 +1533,128 @@ function drawGrid(drawCtx, width, height, cellSize) {
   drawCtx.restore();
 }
 
+function changePatternZoom(delta) {
+  const rect = els.canvasWrap.getBoundingClientRect();
+  setPatternZoom(state.zoom + delta, rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+
+function setPatternZoom(nextZoom, anchorClientX, anchorClientY) {
+  if (!state.pattern) return;
+  const wrapRect = els.canvasWrap.getBoundingClientRect();
+  const canvasRect = els.patternCanvas.getBoundingClientRect();
+  const anchorInWrapX = anchorClientX - wrapRect.left;
+  const anchorInWrapY = anchorClientY - wrapRect.top;
+  const ratioX = canvasRect.width ? clampNumber((anchorClientX - canvasRect.left) / canvasRect.width, 0, 1) : 0.5;
+  const ratioY = canvasRect.height ? clampNumber((anchorClientY - canvasRect.top) / canvasRect.height, 0, 1) : 0.5;
+
+  state.zoom = clampNumber(nextZoom, MIN_PATTERN_ZOOM, MAX_PATTERN_ZOOM);
+  renderPattern();
+
+  const nextCanvasWidth = els.patternCanvas.offsetWidth;
+  const nextCanvasHeight = els.patternCanvas.offsetHeight;
+  els.canvasWrap.scrollLeft = Math.max(0, els.patternCanvas.offsetLeft + ratioX * nextCanvasWidth - anchorInWrapX);
+  els.canvasWrap.scrollTop = Math.max(0, els.patternCanvas.offsetTop + ratioY * nextCanvasHeight - anchorInWrapY);
+}
+
+function handleCanvasTouchDown(event) {
+  if (!state.pattern || event.pointerType !== "touch") return;
+  event.preventDefault();
+  els.canvasWrap.setPointerCapture?.(event.pointerId);
+  els.canvasWrap.classList.add("is-touching");
+  state.activePatternPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+  if (state.activePatternPointers.size >= 2) {
+    state.patternPan = null;
+    beginPatternPinch();
+  } else {
+    state.patternPinch = null;
+    state.patternPan = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: els.canvasWrap.scrollLeft,
+      scrollTop: els.canvasWrap.scrollTop,
+    };
+  }
+}
+
+function handleCanvasTouchMove(event) {
+  if (event.pointerType !== "touch" || !state.activePatternPointers.has(event.pointerId)) return;
+  event.preventDefault();
+  state.activePatternPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+  if (state.activePatternPointers.size >= 2) {
+    const pair = getPatternPointerPair();
+    if (!pair) return;
+    if (!state.patternPinch) beginPatternPinch();
+    const distance = getPointerDistance(pair[0], pair[1]);
+    if (!distance || !state.patternPinch?.distance) return;
+    const center = getPointerCenter(pair[0], pair[1]);
+    setPatternZoom(state.patternPinch.zoom * (distance / state.patternPinch.distance), center.x, center.y);
+    return;
+  }
+
+  if (!state.patternPan || state.patternPan.pointerId !== event.pointerId) return;
+  els.canvasWrap.scrollLeft = state.patternPan.scrollLeft - (event.clientX - state.patternPan.startX);
+  els.canvasWrap.scrollTop = state.patternPan.scrollTop - (event.clientY - state.patternPan.startY);
+}
+
+function handleCanvasTouchEnd(event) {
+  if (event.pointerType !== "touch" || !state.activePatternPointers.has(event.pointerId)) return;
+  state.activePatternPointers.delete(event.pointerId);
+  els.canvasWrap.releasePointerCapture?.(event.pointerId);
+
+  if (state.activePatternPointers.size >= 2) {
+    beginPatternPinch();
+    return;
+  }
+
+  state.patternPinch = null;
+  if (state.activePatternPointers.size === 1) {
+    const [pointerId, pointer] = state.activePatternPointers.entries().next().value;
+    state.patternPan = {
+      pointerId,
+      startX: pointer.x,
+      startY: pointer.y,
+      scrollLeft: els.canvasWrap.scrollLeft,
+      scrollTop: els.canvasWrap.scrollTop,
+    };
+    return;
+  }
+
+  state.patternPan = null;
+  els.canvasWrap.classList.remove("is-touching");
+}
+
+function beginPatternPinch() {
+  const pair = getPatternPointerPair();
+  if (!pair) return;
+  state.patternPinch = {
+    distance: getPointerDistance(pair[0], pair[1]),
+    zoom: state.zoom,
+  };
+}
+
+function getPatternPointerPair() {
+  const pointers = Array.from(state.activePatternPointers.values());
+  if (pointers.length < 2) return null;
+  return [pointers[0], pointers[1]];
+}
+
+function getPointerDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function getPointerCenter(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
+}
+
 function handlePointerDown(event) {
   if (!state.pattern) return;
+  if (event.pointerType === "touch") return;
   event.preventDefault();
   state.isPainting = true;
   state.editSnapshotTaken = false;
@@ -1540,6 +1665,7 @@ function handlePointerDown(event) {
 
 function handlePointerMove(event) {
   if (!state.pattern) return;
+  if (event.pointerType === "touch") return;
   const cell = getCellFromEvent(event);
   if (!cell) return;
   updateHoverReadout(cell.x, cell.y);
@@ -1549,6 +1675,7 @@ function handlePointerMove(event) {
 
 function handlePointerUp(event) {
   if (!state.pattern) return;
+  if (event.pointerType === "touch") return;
   state.isPainting = false;
   state.lastPaintKey = "";
   state.editSnapshotTaken = false;
