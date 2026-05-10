@@ -331,6 +331,25 @@ button:disabled {
   display: none;
 }
 
+.app.is-mobile-preview .preview-layout {
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.app.is-mobile-preview .original-panel,
+.app.is-mobile-preview .pattern-panel {
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  min-height: calc(100svh - 96px);
+  scroll-margin-top: 82px;
+}
+
+.app.is-mobile-preview .original-frame,
+.app.is-mobile-preview .canvas-wrap {
+  height: auto;
+  min-height: 0;
+}
+
 .workspace {
   display: grid;
   gap: 16px;
@@ -1042,6 +1061,10 @@ th {
 
 @media (max-width: 1180px) {
   .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-layout {
     grid-template-columns: 1fr;
   }
 

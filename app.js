@@ -496,6 +496,7 @@ const state = {
 init();
 
 function init() {
+  updateMobilePreviewLayout();
   setUiMode(state.uiMode, false);
   updateActivePalette();
   applyI18n();
@@ -674,6 +675,7 @@ function wireEvents() {
 
   window.addEventListener("resize", () => {
     window.requestAnimationFrame(() => {
+      updateMobilePreviewLayout();
       renderPattern();
       renderCropBox();
     });
@@ -724,6 +726,14 @@ function setUiMode(mode, persist = true) {
     renderPattern();
     renderCropBox();
   });
+}
+
+function updateMobilePreviewLayout() {
+  const screenWidth = window.screen?.width || window.innerWidth;
+  const isTouchDevice = navigator.maxTouchPoints > 0 || Boolean(window.matchMedia?.("(pointer: coarse)").matches);
+  const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+  const shouldUseMobilePreview = isTouchDevice && (Math.min(window.innerWidth, screenWidth) <= 1180 || isWeChat);
+  els.app.classList.toggle("is-mobile-preview", shouldUseMobilePreview);
 }
 
 function t(key) {
